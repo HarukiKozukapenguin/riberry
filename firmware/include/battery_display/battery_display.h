@@ -1,18 +1,65 @@
-#include "battery_display.h"
+#ifndef BatteryDisplay_h
+#define BatteryDisplay_h
+
 #include "M5AtomS3.h"
 
 #define LCD_H M5.Lcd.height()
 #define LCD_W M5.Lcd.width()
 
+// voltage unit: V
+class BatteryDisplay
+{
+public:
+  BatteryDisplay(ros::NodeHandle* nh);
 
-BatteryDisplay::BatteryDisplay()
+public:
+  void displayFrame();
+  void updateVoltage();
+  int getBatCell() {return bat_cell_;}
+  void init();
+
+  static constexpr float VOLTAGE_100P =  4.2;
+  static constexpr float VOLTAGE_90P =  4.085;
+  static constexpr float VOLTAGE_80P =  3.999;
+  static constexpr float VOLTAGE_70P =  3.936;
+  static constexpr float VOLTAGE_60P =  3.883;
+  static constexpr float VOLTAGE_50P =  3.839;
+  static constexpr float VOLTAGE_40P =  3.812;
+  static constexpr float VOLTAGE_30P =  3.791;
+  static constexpr float VOLTAGE_20P =  3.747;
+  static constexpr float VOLTAGE_10P =  3.1;
+  static constexpr float VOLTAGE_0P =  3.0;
+
+private:
+  ros::NodeHandle* nh_;
+  ros::Subscriber<std_msgs::Float32, BatteryDisplay> battery_voltage_sub_;
+
+  int bat_cell_;
+  float battery_voltage_;
+
+  void batteryVoltageCallback(const std_msgs::Float32& msg);
+  float calcPercentage(float voltage);
+  void rosParamInit();
+};
+
+inline BatteryDisplay::BatteryDisplay(ros::NodeHandle* nh):
+  nh_(nh),
+  battery_voltage_sub_("battery_voltage_status", &BatteryDisplay::batteryVoltageCallback, this)
 {
+  nh->subscribe(battery_voltage_sub_);
 }
-void BatteryDisplay::SetBatcell(int bat_cell)
+
+inline void BatteryDisplay::init()
 {
-  bat_cell_ = bat_cell;
+  rosParamInit();
 }
-void BatteryDisplay::displayFrame()
+
+inline void BatteryDisplay::rosParamInit()
+{
+  nh_->getParam("bat_info/bat_cell", &bat_cell_);
+}
+
+inline void BatteryDisplay::displayFrame()
 {
   // Show title.
   M5.Lcd.fillRect(0, 0, LCD_W, 16, MAROON);
@@ -27,7 +74,8 @@ void BatteryDisplay::displayFrame()
   M5.Lcd.drawString("%", LCD_W-12, 22, 1);
 }
 
-float BatteryDisplay::calcPercentage(float voltage){
+inline float BatteryDisplay::calcPercentage(float voltage)
+{
   float average_voltage = voltage / bat_cell_;
   float input_cell = voltage / VOLTAGE_100P;
   float percentage = 0;
@@ -44,9 +92,9 @@ float BatteryDisplay::calcPercentage(float voltage){
   return percentage;
 }
 
-void BatteryDisplay::updateVoltage(float voltage)
+inline void BatteryDisplay::updateVoltage()
 {
-  float voltageRatio = calcPercentage(voltage)/100;
+  float voltageRatio = calcPercentage(battery_voltage_) / 100;
   voltageRatio = constrain(voltageRatio, 0.0f, 1.0f);
 
   // Erase screen.
@@ -56,7 +104,7 @@ void BatteryDisplay::updateVoltage(float voltage)
   // Show voltage.
   M5.Lcd.setTextColor(WHITE);
   M5.Lcd.setCursor(2, 21);
-  M5.Lcd.printf("%0.2f", voltage);
+  M5.Lcd.printf("%0.2f", battery_voltage_);
   M5.Lcd.drawString("V", LCD_W/2, 22, 1);
   M5.Lcd.setCursor(LCD_W/2+25, 21);
   M5.Lcd.print((uint8_t)(voltageRatio*100));
@@ -81,3 +129,10 @@ void BatteryDisplay::updateVoltage(float voltage)
       M5.Lcd.fillRoundRect(rect_x, rect_y, rect_w, rect_h, radius, color);
     }
 }
+
+inline void BatteryDisplay::batteryVoltageCallback(const std_msgs::Float32& msg)
+{
+  battery_voltage_ = msg.data;
+}
+
+#endif
