@@ -11,8 +11,6 @@ class BatteryDisplay
 {
 public:
   BatteryDisplay(ros::NodeHandle* nh);
-
-public:
   void displayFrame();
   void updateVoltage();
   int getBatCell() {return bat_cell_;}
