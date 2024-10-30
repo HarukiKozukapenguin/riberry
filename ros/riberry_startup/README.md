@@ -1,4 +1,8 @@
 # riberry startup
+In the case of initial setup in ros environment.
+```bash
+rosdep install -y -r --from-paths src --ignore-src --rosdistro $ROS_DISTRO
+```
 
 ## atoms3_button_state_publisher.launch
 
